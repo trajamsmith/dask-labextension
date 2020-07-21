@@ -6,7 +6,8 @@
   "properties": {
     "defaultURL": {
       "type": "string",
-      "title": "Default URL for the Dask Dashboard Webserver",
+      "title": "Default URL",
+      "description": "Default URL for the Dask Dashboard Webserver",
       "default": ""
     },
     "autoStartClient": {
@@ -14,6 +15,38 @@
       "title": "Auto-Start Client",
       "description": "If set to true, every notebook and console will automatically have a dask client for the active cluster injected into the kernel under the name 'client'",
       "default": false
+    },
+    "daskGatewaySettings": {
+      "type": "object",
+      "title": "Dask Gateway Settings",
+      "description": "For more information, see here: https://gateway.dask.org/usage.html#connect-to-a-dask-gateway-server",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false
+        },
+        "address": {
+          "type": "string",
+          "description": "The full address of the dask-gateway server.",
+          "default": ""
+        },
+        "proxyAddress": {
+          "type": "string",
+          "description": "The full address of the dask-gateway scheduler proxy. If not provided, this defaults to address.",
+          "default": ""
+        },
+        "auth": {
+          "type": "string",
+          "description": " The authentication method to use",
+          "default": ""
+        }
+      },
+      "default": {
+        "enabled": false,
+        "address": "",
+        "proxyAddress": "",
+        "auth": ""
+      }
     }
   },
   "type": "object"
