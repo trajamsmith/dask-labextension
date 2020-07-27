@@ -21,20 +21,39 @@ ClusterModel = Dict[str, Any]
 Cluster = Any
 
 
+def get_environment():
+    env_type = dask.config.get("labextension.environment", default=None)
+
+    if env_type == "gateway":
+        from dask_gateway import Gateway
+
+        return Gateway(asynchronous=False)
+    else:
+        return None
+
+
 async def make_cluster(configuration: dict) -> Cluster:
-    module = importlib.import_module(dask.config.get("labextension.factory.module"))
-    Cluster = getattr(module, dask.config.get("labextension.factory.class"))
+    environment = configuration.get("environment")
 
-    kwargs = dask.config.get("labextension.factory.kwargs")
-    kwargs = {key.replace("-", "_"): entry for key, entry in kwargs.items()}
+    if environment:
+        # Create cluster from environment config, e.g. "gateway.yaml"
+        print("Using the Gateway env: ", environment.__dict__)
+        cluster = await environment.new_cluster()
+    else:
+        # Create cluster from labextension config
+        module = importlib.import_module(dask.config.get("labextension.factory.module"))
+        Cluster = getattr(module, dask.config.get("labextension.factory.class"))
 
-    cluster = await Cluster(
-        *dask.config.get("labextension.factory.args"), **kwargs, asynchronous=True
-    )
+        kwargs = dask.config.get("labextension.factory.kwargs")
+        kwargs = {key.replace("-", "_"): entry for key, entry in kwargs.items()}
 
-    configuration = dask.config.merge(
-        dask.config.get("labextension.default"), configuration
-    )
+        cluster = await Cluster(
+            *dask.config.get("labextension.factory.args"), **kwargs, asynchronous=True
+        )
+
+        configuration = dask.config.merge(
+            dask.config.get("labextension.default"), configuration
+        )
 
     adaptive = None
     if configuration.get("adapt"):
@@ -55,6 +74,7 @@ class DaskClusterManager:
 
     def __init__(self) -> None:
         """ Initialize the cluster manager """
+        self.environment = get_environment()
         self._clusters: Dict[str, Cluster] = dict()
         self._adaptives: Dict[str, Adaptive] = dict()
         self._cluster_names: Dict[str, str] = dict()
@@ -86,6 +106,9 @@ class DaskClusterManager:
         """
         if not cluster_id:
             cluster_id = str(uuid4())
+
+        if self.environment:
+            configuration["environment"] = self.environment
 
         cluster, adaptive = await make_cluster(configuration)
         self._n_clusters += 1
@@ -200,13 +223,11 @@ class DaskClusterManager:
 
         # Check if it is actually different.
         model = make_cluster_model(cluster_id, name, cluster, adaptive)
-        if model.get("adapt") != None and model["adapt"][
-            "minimum"
-        ] == minimum and model[
-            "adapt"
-        ][
-            "maximum"
-        ] == maximum:
+        if (
+            model.get("adapt") != None
+            and model["adapt"]["minimum"] == minimum
+            and model["adapt"]["maximum"] == maximum
+        ):
             return model
 
         # Otherwise, rescale the model.
