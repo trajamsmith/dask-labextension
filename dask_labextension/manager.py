@@ -27,7 +27,7 @@ def get_environment():
     if env_type == "gateway":
         from dask_gateway import Gateway
 
-        return Gateway(asynchronous=False)
+        return Gateway(asynchronous=True)
     else:
         return None
 
@@ -126,6 +126,9 @@ class DaskClusterManager:
 
         self._clusters[cluster_id] = cluster
         self._cluster_names[cluster_id] = cluster_name
+
+        print(f"CLUSTER FROM SERVICE: {cluster.__dict__}")
+
         return make_cluster_model(cluster_id, cluster_name, cluster, adaptive=adaptive)
 
     async def close_cluster(self, cluster_id: str) -> Union[ClusterModel, None]:
@@ -280,7 +283,6 @@ def make_cluster_model(
 
     cluster_name: string
         A display name for the cluster.
-
     cluster: Cluster
         The cluster out of which to make the cluster model.
 
@@ -294,6 +296,9 @@ def make_cluster_model(
         info = cluster.scheduler_info
     except AttributeError:
         info = cluster.scheduler.identity()
+
+    print(f"INFORMATION ABOUT CLUSTERS: {info}")
+
     try:
         cores = sum(d["nthreads"] for d in info["workers"].values())
     except KeyError:  # dask.__version__ < 2.0
